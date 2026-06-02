@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Claude Local Files — Extension Chrome
 
 Extension Chrome qui s'intègre directement dans **claude.ai** et donne accès à ton système de fichiers local — sans clé API, avec ton abonnement existant.
@@ -81,3 +82,6 @@ Le serveur écoute sur `localhost:3747` uniquement.
 
 ---
 *Proposition pour Anthropic — Arnaud, 2026*
+=======
+# claude-local-files-proposal
+>>>>>>> 2f251f1087acc446e1cba20cd7473ef67f353b80
