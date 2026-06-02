@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<title>Claude Local Files</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  width: 300px;
+  background: #0f0f0f;
+  color: #e0ddd8;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+}
+
+.header {
+  padding: 16px;
+  border-bottom: 1px solid #1e1e1e;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-logo {
+  width: 32px; height: 32px;
+  background: rgba(204,107,43,0.12);
+  border: 1px solid rgba(204,107,43,0.25);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.header-info h1 { font-size: 14px; font-weight: 600; }
+.header-info p  { font-size: 11px; color: #666; }
+
+.section {
+  padding: 14px 16px;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.section-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #555;
+  margin-bottom: 10px;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot.online  { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+.dot.offline { background: #f87171; }
+
+.status-text { flex: 1; color: #999; }
+
+.rootdir-box {
+  background: #161616;
+  border: 1px solid #222;
+  border-radius: 7px;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-family: 'Consolas', monospace;
+  color: #cc6b2b;
+  word-break: break-all;
+  margin-bottom: 8px;
+  min-height: 32px;
+}
+
+.input-field {
+  width: 100%;
+  background: #161616;
+  border: 1px solid #222;
+  border-radius: 7px;
+  padding: 8px 10px;
+  color: #e0ddd8;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+  margin-bottom: 8px;
+}
+.input-field:focus { border-color: #cc6b2b; }
+
+.btn {
+  width: 100%;
+  padding: 9px;
+  background: rgba(204,107,43,0.15);
+  border: 1px solid rgba(204,107,43,0.3);
+  border-radius: 8px;
+  color: #cc6b2b;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: 6px;
+}
+.btn:hover { background: rgba(204,107,43,0.25); }
+.btn:last-child { margin-bottom: 0; }
+
+.btn-secondary {
+  background: transparent;
+  border-color: #2a2a2a;
+  color: #777;
+}
+.btn-secondary:hover { background: #1a1a1a; color: #aaa; border-color: #333; }
+
+.footer {
+  padding: 10px 16px;
+  text-align: center;
+  font-size: 10px;
+  color: #333;
+}
+
+.hint {
+  font-size: 11px;
+  color: #555;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+
+.cmd-box {
+  background: #0a0a0a;
+  border: 1px solid #1e1e1e;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: 'Consolas', monospace;
+  font-size: 11px;
+  color: #4ade80;
+  margin-top: 6px;
+  user-select: all;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">
+    <svg width="16" height="16" viewBox="0 0 40 40" fill="none">
+      <path d="M12 26 L20 10 L28 26" stroke="#cc6b2b" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M14.5 21 L25.5 21" stroke="#cc6b2b" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="header-info">
+    <h1>Claude Local Files</h1>
+    <p>Extension pour claude.ai</p>
+  </div>
+</div>
+
+<!-- Statut serveur -->
+<div class="section">
+  <div class="section-label">Serveur local</div>
+  <div class="status-row">
+    <div class="dot" id="srv-dot"></div>
+    <span class="status-text" id="srv-text">Vérification…</span>
+  </div>
+  <div class="hint" id="srv-hint"></div>
+</div>
+
+<!-- Répertoire racine -->
+<div class="section">
+  <div class="section-label">Répertoire de travail</div>
+  <div class="rootdir-box" id="rootdir-display">Chargement…</div>
+  <input class="input-field" id="input-rootdir" type="text" placeholder="C:\Dev\MonProjet"/>
+  <button class="btn" id="btn-save-dir">Définir ce répertoire</button>
+</div>
+
+<!-- Actions -->
+<div class="section">
+  <div class="section-label">Actions rapides</div>
+  <button class="btn btn-secondary" id="btn-open-claude">Ouvrir claude.ai</button>
+</div>
+
+<div class="footer">Claude Local Files — Proposal for Anthropic</div>
+
+<script>
+const SERVER = 'http://localhost:3747';
+
+async function init() {
+  // Status serveur
+  try {
+    const r = await fetch(`${SERVER}/ping`, { signal: AbortSignal.timeout(1500) });
+    if (r.ok) {
+      document.getElementById('srv-dot').className = 'dot online';
+      document.getElementById('srv-text').textContent = 'Connecté sur localhost:3747';
+      document.getElementById('srv-hint').textContent = '';
+
+      // Charger le répertoire courant
+      const cfg = await fetch(`${SERVER}/config`).then(r => r.json());
+      document.getElementById('rootdir-display').textContent = cfg.rootDirectory || '(non défini)';
+      document.getElementById('input-rootdir').value = cfg.rootDirectory || '';
+    }
+  } catch {
+    document.getElementById('srv-dot').className = 'dot offline';
+    document.getElementById('srv-text').textContent = 'Serveur hors ligne';
+    document.getElementById('srv-hint').innerHTML = 'Lance dans ton terminal :<div class="cmd-box">node server.js</div>';
+  }
+}
+
+document.getElementById('btn-save-dir').addEventListener('click', async () => {
+  const dir = document.getElementById('input-rootdir').value.trim();
+  if (!dir) return;
+  try {
+    const r = await fetch(`${SERVER}/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rootDirectory: dir })
+    });
+    const data = await r.json();
+    if (data.success) {
+      document.getElementById('rootdir-display').textContent = dir;
+      document.getElementById('rootdir-display').style.color = '#4ade80';
+      setTimeout(() => document.getElementById('rootdir-display').style.color = '', 1500);
+    } else {
+      alert('Erreur: ' + data.error);
+    }
+  } catch (err) {
+    alert('Serveur hors ligne');
+  }
+});
+
+document.getElementById('btn-open-claude').addEventListener('click', () => {
+  chrome.tabs.create({ url: 'https://claude.ai' });
+});
+
+init();
+</script>
+</body>
+</html>
